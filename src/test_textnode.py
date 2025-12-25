@@ -3,7 +3,8 @@ import unittest
 from textnode import TextNode, TextType
 from text_node_to_html_node import text_node_to_html_node
 from htmlnode import LeafNode, NonClosingLeafNode
-from split_nodes_delimiter import split_nodes_delimiter
+from split_nodes import split_nodes_delimiter, split_nodes_image, split_nodes_link, text_to_textnodes
+from extract_markdown import extract_markdown_images, extract_markdown_links
 
 class TestTextNode(unittest.TestCase):
     def test_eq(self):
@@ -148,6 +149,103 @@ class TestTextNode(unittest.TestCase):
         delimiter = "_"
         with self.assertRaises(ValueError):
             split_nodes_delimiter(nodes, delimiter, TextType.ITALIC)
+
+    def text_extract_markdown_images(self):
+        text = "This is text with a ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)"
+        expected_splits = [("rick roll", "https://i.imgur.com/aKaOqIh.gif"), ("obi wan", "https://i.imgur.com/fJRm4Vk.jpeg")]
+        splits = extract_markdown_images(text)
+        self.assertEqual(splits, expected_splits)
+
+    def test_extract_markdown_links(self):
+        text = "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)"
+        expected_splits = [("to boot dev", "https://www.boot.dev"), ("to youtube", "https://www.youtube.com/@bootdotdev")]
+        splits = extract_markdown_links(text)
+        self.assertEqual(splits, expected_splits)
+
+    def test_extract_markdown_images_and_links(self):
+        text = "This is text with a link [to google](https://www.google.com) and a ![picture of you](https://upload.wikimedia.org/wikipedia/en/9/9e/Pictures_of_You.jpg)"
+
+        expected_link_splits = [("to google", "https://www.google.com")]
+        link_splits = extract_markdown_links(text)
+        self.assertEqual(link_splits, expected_link_splits)
+
+        expected_image_splits = [("picture of you", "https://upload.wikimedia.org/wikipedia/en/9/9e/Pictures_of_You.jpg")]
+        image_splits = extract_markdown_images(text)
+        self.assertEqual(image_splits, expected_image_splits)
+
+    def test_extract_markdown_empty(self):
+        text = ""
+        
+        expected_link_splits = []
+        link_splits = extract_markdown_links(text)
+        self.assertEqual(link_splits, expected_link_splits)
+
+        expected_image_splits = []
+        image_splits = extract_markdown_images(text)
+        self.assertEqual(image_splits, expected_image_splits)
+
+    def test_split_nodes_image(self):
+        text = "This is text with a ![rick roll](https://i.imgur.com/aKaOqIh.gif) and ![obi wan](https://i.imgur.com/fJRm4Vk.jpeg)"
+        expected_splits =  [TextNode("This is text with a ", TextType.PLAIN, None), TextNode('rick roll', TextType.IMAGE, "https://i.imgur.com/aKaOqIh.gif"), TextNode(" and ", TextType.PLAIN, None), TextNode("obi wan", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg")]
+        splits = split_nodes_image([TextNode(text, TextType.PLAIN)])
+        self.assertEqual(splits, expected_splits)
+
+    def test_split_nodes_image_adjacent(self):
+        text = "This is text with a ![rick roll](https://i.imgur.com/aKaOqIh.gif)![ and obi wan](https://i.imgur.com/fJRm4Vk.jpeg)"
+        expected_splits =  [TextNode("This is text with a ", TextType.PLAIN, None), TextNode('rick roll', TextType.IMAGE, "https://i.imgur.com/aKaOqIh.gif"), TextNode(" and obi wan", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg")]
+        splits = split_nodes_image([TextNode(text, TextType.PLAIN)])
+        self.assertEqual(splits, expected_splits)
+
+    def test_split_nodes_image_missing(self):
+        text = "No image here"
+        expected_splits = [TextNode(text, TextType.PLAIN)]
+        splits = split_nodes_image([TextNode(text, TextType.PLAIN)])
+        self.assertEqual(splits, expected_splits)
+
+    def text_split_nodes_link(self):
+        text = "This is text with a link [to boot dev](https://www.boot.dev) and [to youtube](https://www.youtube.com/@bootdotdev)"
+        expected_splits =  [TextNode("This is text with a link ", TextType.PLAIN, None), TextNode("to boot dev", TextType.LINK, "https://www.boot.dev"), TextNode(" and ", TextType.PLAIN, None), TextNode("to youtube", TextType.LINK, "https://www.youtube.com/@bootdotdev")]
+        splits = split_nodes_link([TextNode(text, TextType.PLAIN)])
+        self.assertEqual(splits, expected_splits)
+
+    def test_split_nodes_image_adjacent(self):
+        text = "This is text with a link [to boot dev](https://www.boot.dev)[ and to youtube](https://www.youtube.com/@bootdotdev)"        
+        expected_splits =  [TextNode("This is text with a link ", TextType.PLAIN, None), TextNode("to boot dev", TextType.LINK, "https://www.boot.dev"), TextNode(" and to youtube", TextType.LINK, "https://www.youtube.com/@bootdotdev")]
+        splits = split_nodes_link([TextNode(text, TextType.PLAIN)])
+        self.assertEqual(splits, expected_splits)
+
+    def test_split_nodes_image_and_link(self):
+        text = "This is text with a link [to google](https://www.google.com) and a ![picture of you](https://upload.wikimedia.org/wikipedia/en/9/9e/Pictures_of_You.jpg)"
+        text_node = [TextNode(text, TextType.PLAIN)]
+
+        expected_link_splits = [TextNode("This is text with a link ", TextType.PLAIN, None), TextNode("to google", TextType.LINK, "https://www.google.com"), TextNode(" and a ![picture of you](https://upload.wikimedia.org/wikipedia/en/9/9e/Pictures_of_You.jpg)", TextType.PLAIN, None)]
+        link_splits = split_nodes_link(text_node)
+        self.assertEqual(link_splits, expected_link_splits)
+
+        expected_image_splits = [TextNode("This is text with a link [to google](https://www.google.com) and a ", TextType.PLAIN, None), TextNode("picture of you", TextType.IMAGE, "https://upload.wikimedia.org/wikipedia/en/9/9e/Pictures_of_You.jpg")]
+        image_splits = split_nodes_image(text_node)
+        self.assertEqual(image_splits, expected_image_splits)
+
+        link_image_splits = split_nodes_image(link_splits)
+        image_link_splits = split_nodes_link(image_splits)
+        self.assertEqual(link_image_splits, image_link_splits)
+
+    def test_text_to_textnodes(self):
+        text = "This is **text** with an _italic_ word and a `code block` and an ![obi wan image](https://i.imgur.com/fJRm4Vk.jpeg) and a [link](https://boot.dev)"
+        expected_nodes = [
+            TextNode("This is ", TextType.PLAIN, None),
+            TextNode("text", TextType.BOLD, None),
+            TextNode(" with an ", TextType.PLAIN, None),
+            TextNode("italic", TextType.ITALIC, None),
+            TextNode(" word and a ", TextType.PLAIN, None), 
+            TextNode("code block", TextType.CODE, None),
+            TextNode(" and an ", TextType.PLAIN, None),
+            TextNode("obi wan image", TextType.IMAGE, "https://i.imgur.com/fJRm4Vk.jpeg"),
+            TextNode(" and a ", TextType.PLAIN, None),
+            TextNode("link", TextType.LINK, "https://boot.dev"),
+            ]
+        nodes = text_to_textnodes(text)
+        self.assertEqual(nodes, expected_nodes)
 
 if __name__ == "__main__":
     unittest.main()
