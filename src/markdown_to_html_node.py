@@ -64,6 +64,8 @@ def markdown_to_html_node(markdown: str) -> htmlnode.ParentNode:
             for line in text_list:
                 line = line[line.find(line_markdown) + 1:]
                 line = line.strip()
+                if line == "":
+                    continue
                 line_text_nodes = text_to_textnodes(line)
                 line_html_node = htmlnode.ParentNode(tag=line_tag, children=[text_node_to_html_node(text_node) for text_node in line_text_nodes])
                 line_nodes.append(line_html_node)

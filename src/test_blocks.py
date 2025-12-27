@@ -2,6 +2,7 @@ import unittest
 
 from blocks import BlockType, markdown_to_blocks, block_to_block_type
 from markdown_to_html_node import markdown_to_html_node
+from extract_title import extract_title
 
 class TestBlocks(unittest.TestCase):
     def test_markdown_to_blocks(self):
@@ -205,3 +206,27 @@ the **same** even with inline stuff
             "<div><h1>First heading</h1><h2>Second heading</h2><h3>Third heading</h3><h4>Fourth heading</h4><h5>Fifth heading</h5><h6>Sixth heading</h6><blockquote><p>Where are we heading anyway?</p></blockquote></div>",
         )
         
+    def test_extract_title(self):
+        md = "# I'm a little program\n# Short and stout\n# Here is my input\n# Here is my out."
+
+        title = extract_title(md)
+        self.assertEqual(title, "I'm a little program")
+
+    def test_extract_title_none(self):
+        md = ("This is not a title\n"
+              + "#Neither is this\n"
+              + "### Don't look at me\n"
+              + "There is no # title here")
+        
+        with self.assertRaises(Exception):
+            title = extract_title(md)
+
+    def test_extract_title_late(self):
+        md = ("Wait for it\n"
+              + "#Waait for it\n"
+              + "## Waaait for it\n"
+              + "##Waaaait for it\n"
+              + "# Now! ")
+        
+        title = extract_title(md)
+        self.assertEqual(title, "Now!")
