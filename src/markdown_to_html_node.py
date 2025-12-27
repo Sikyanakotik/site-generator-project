@@ -30,10 +30,24 @@ def markdown_to_html_node(markdown: str) -> htmlnode.ParentNode:
                 return block_node
             
             case blocks.BlockType.QUOTE:
-                block_node = htmlnode.ParentNode(tag='blockquote', children=None)
+                # block_node = htmlnode.ParentNode(tag='blockquote', children=None)
                 text = block
-                line_tag = "p"
+                # line_tag = 'p' 
                 line_markdown = ">"
+
+                # That was the clean way. Now we do it the dumb way.
+                text_list = text.split('\n')   
+                text_list = [text.strip() for text in text_list if text.strip() != ""]
+                cleaned_lines = []
+                for line in text_list:
+                    line = line[line.find(line_markdown) + 1:]
+                    line = line.strip()
+                    if line == "":
+                        continue
+                    cleaned_lines.append(line)
+                text = " ".join(cleaned_lines)
+                block_node = htmlnode.LeafNode(tag='blockquote', value=text)
+                return block_node
 
             case blocks.BlockType.UNORDERED_LIST:
                 block_node = htmlnode.ParentNode(tag='ul', children=None)
@@ -55,12 +69,12 @@ def markdown_to_html_node(markdown: str) -> htmlnode.ParentNode:
             text = text.replace('\n', ' ')
             child_text_nodes = text_to_textnodes(text)
             block_node.children = [text_node_to_html_node(text_node) for text_node in child_text_nodes]
-            
+      
         else:                   # If we have a multiline tag, break it into lines
             line_nodes = []
             text_list = text.split('\n')
             text_list = [text.strip() for text in text_list if text.strip() != ""]
-
+            
             for line in text_list:
                 line = line[line.find(line_markdown) + 1:]
                 line = line.strip()

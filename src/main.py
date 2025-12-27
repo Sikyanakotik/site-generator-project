@@ -1,11 +1,12 @@
 import os
+import sys
 import shutil
 
 from textnode import TextNode, TextType
 from extract_title import extract_title
 from markdown_to_html_node import markdown_to_html_node
 
-PUBLIC_PATH = "public/"
+PUBLIC_PATH = "docs/"
 STATIC_PATH = "static/"
 
 def copy_static_to_public():
@@ -26,7 +27,7 @@ def copy_static_to_public():
     
     copy_dir_to_dir(STATIC_PATH, PUBLIC_PATH)
     
-def generate_page(from_path, template_path, dest_path):
+def generate_page(base_path, from_path, template_path, dest_path):
     print(f"Generating page from {from_path} to {dest_path} using {template_path}.")
     
     with open(from_path, 'r') as markdown_file:
@@ -41,25 +42,34 @@ def generate_page(from_path, template_path, dest_path):
 
     template = template.replace("{{ Title }}", title)
     template = template.replace("{{ Content }}", html_content)
+    template = template.replace('href="/', f'href="{base_path}')
+    template = template.replace('src="/', f'src="{base_path}')
 
     with open(dest_path, 'w') as page_file:
         page_file.write(template)
 
-def generate_pages_in_dir(source_path, template_path, dest_path):
-    source_contents = os.scandir(source_path)    
+def generate_pages_in_dir(base_path, source_path, template_path, dest_path):
+    source_contents = os.scandir(source_path)
     for entry in source_contents:
         print(entry.name)
         dest = os.path.join(dest_path, entry.name)
         if entry.is_dir():
-            os.mkdir(dest)
-            generate_pages_in_dir(entry.path, template_path, dest)
+            if not os.path.exists(dest):
+                os.mkdir(dest)
+            generate_pages_in_dir(base_path, entry.path, template_path, dest)
         elif entry.name[-3:] == ".md":
-            generate_page(entry, template_path, dest[:-3] + ".html")
+            generate_page(base_path, entry, template_path, dest[:-3] + ".html")
 
 def main():
+    try:
+        base_path = sys.argv[1]
+    except IndexError:
+        base_path = "/"
+    
     template_path = "template.html"
+    docs_dir = "docs/"
     copy_static_to_public()
-    generate_pages_in_dir("content/", template_path, "public/")
+    generate_pages_in_dir(base_path, "content/", template_path, docs_dir)
 
 
 if __name__ == "__main__":
